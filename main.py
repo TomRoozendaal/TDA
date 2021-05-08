@@ -3,7 +3,6 @@ import pandas as pd
 import numpy as np
 import pptk
 import pyproj
-import datetime
 from matplotlib import cm
 
 '''
@@ -50,6 +49,7 @@ if mode not in modes:
 elif modes[mode] == 'alt':
     '''Load/read data'''
     df = load_df()
+    print(df)
     print("Done loading data\nSetting up viewer")
 
     P = np.c_[df['lon'], df['lat'], np.zeros(len(df))]
@@ -63,13 +63,16 @@ elif modes[mode] == 'alt':
 elif modes[mode] == 'label':
     '''Load/read data'''
     df = load_df_50()
+    print(df)
     print("Done loading data\nConverting data")
 
     # Convert lat/lon to meters in UTM coordinate system
     # Note: takes time!
-    proj = pyproj.Proj(proj='utm', zone=50, ellps='WGS84')
-    x, y = proj(df['lon'].tolist(), df['lat'].tolist())
-    P = np.c_[x, y, 0.3048 * df['alt']]  # feet are converted to meters
+    # proj = pyproj.Proj(proj='utm', zone=50, ellps='WGS84')
+    # x, y = proj(df['lon'].tolist(), df['lat'].tolist())
+    # P = np.c_[x, y, 0.3048 * df['alt']]  # feet are converted to meters
+
+    P = np.c_[df['lon'], df['lat'], np.zeros(len(df))]
     print("Conversion done\nSetting up viewer")
 
     # Setup viewer; only show labelled data
@@ -80,6 +83,7 @@ elif modes[mode] == 'label':
 elif modes[mode] == 'time':
     '''Load/read data'''
     df = load_df_50()
+    print(df)
     print("Done loading data\nSetting up viewer")
 
     P = np.c_[df['lon'], df['lat'], np.zeros(len(df))]
