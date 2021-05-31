@@ -16,6 +16,10 @@ def read_plt(plt_file):
     # remove unused columns
     points.drop(inplace=True, columns=[2, 4])
 
+    points.index = points['time']
+    points = points.resample('1min').mean()
+    points = points.dropna()
+    points = points.reset_index()
     return points
 
 

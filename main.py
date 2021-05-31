@@ -19,7 +19,7 @@ colormap = np.concatenate((cols, cols[::-1]))
 
 # select a visualization
 modes = {1: 'alt', 2: 'label', 3: 'time'}
-mode = 3
+mode = 1
 
 
 # Load full data frame
