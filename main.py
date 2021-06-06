@@ -113,12 +113,13 @@ elif modes[mode] == 'groups':
 
     # PARAMETERS
     eps = 0.01  # defines how close individuals should be to be considered a group
-    dur = 3  # defines how long individuals should be together be considered a group
-    num = 2  # defines how many individuals forms a group
+    dur = 2  # defines how long individuals should be together be considered a group
+    num = 3  # defines how many individuals forms a group
 
     user_list = df['user'].drop_duplicates()
     timestamps = df['time'].drop_duplicates()
     groups = {}
+    dur_groups = {}
 
     # some downscaling, to be removed
     timestamps = timestamps.head(30)
@@ -145,24 +146,44 @@ elif modes[mode] == 'groups':
                 if u1 < u2:
                     dfu1 = dft.loc[dft['user'] == u1]
                     dfu2 = dft.loc[dft['user'] == u2]
-                    # TODO: convert lat/long to meters (x/y)
-                    # x1, y1 = dfu1['x'].iloc[0], dfu1['y'].iloc[0]
-                    # x2, y2 = dfu2['x'].iloc[0], dfu2['y'].iloc[0]
+                    # # TODO: convert lat/long to meters (x/y)
+                    # # x1, y1 = dfu1['x'].iloc[0], dfu1['y'].iloc[0]
+                    # # x2, y2 = dfu2['x'].iloc[0], dfu2['y'].iloc[0]
                     x1, y1 = dfu1['lat'].iloc[0], dfu1['lon'].iloc[0]
                     x2, y2 = dfu2['lat'].iloc[0], dfu2['lon'].iloc[0]
                     r = m.sqrt((x2 - x1)**2 + (y2 - y1)**2)
                     print(f'u1: {u1}, (x1, y1): ({x1}, {y1})\nu2: {u2}, (x2, y2): ({x2}, {y2})')
                     print(f'r: {r}')
-                    if r < eps:
+                    if r <= eps:
                         added = False
+                        grp1 = None
+                        grp2 = None
                         for grp in grpt:
-                            if u1 in grp or u2 in grp:
-                                grp.add(u1)
-                                grp.add(u2)
+                            if u1 in grp:
+                                grp1 = grp
+                                added = True
+                            if u2 in grp:
+                                grp2 = grp
                                 added = True
                         if not added:
                             grpt.append({u1, u2})
+                        elif grp1 is None:
+                            grp2.add(u1)
+                        elif grp2 is None:
+                            grp1.add(u2)
+                        elif grp1 is not grp2:
+                            grpt.remove(grp1)
+                            grpt.remove(grp2)
+                            grpt.append(grp1.union(grp2))
         groups[timestamps[i]] = grpt
+
+        to_remove = []
+        for grp in grpt:
+            if len(grp) < num:
+                to_remove.append(grp)
+        for tr in to_remove:
+            print(f"removed group {tr}")
+            grpt.remove(tr)
         print()
 
     print(f'\ngroups:\n{groups}\n')
@@ -175,12 +196,20 @@ elif modes[mode] == 'groups':
     for i in range(len(timestamps) - dur):
         stamp = timestamps[i]
         grpt = groups[stamp]
-        for grp in grpt:
-            print(grp)
-            pset = powerset(grp)
-            print(pset)
+        i_list = [grpt]
+        for j in range(dur-1):
+            stampj = timestamps[i + j + 1]
+            grps = groups[stampj]
+            new_list = []
+            for grp in i_list[j]:
+                for grs in grps:
+                    inter = grp.intersection(grs)
+                    if len(inter) >= num:
+                        new_list.append(inter)
+            i_list.append(new_list)
+        lst = i_list[dur-1]
+        dur_groups[stamp] = lst
+    print(dur_groups)
 
-            for j in range(dur):
-                stampj = timestamps[i + j + 1]
 
 
