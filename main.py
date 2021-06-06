@@ -109,33 +109,33 @@ elif modes[mode] == 'time':
     viewer.color_map(colormap)
 elif modes[mode] == 'groups':
     '''Load/read data'''
-    df = load_df()
+    df = load_df_50()
 
     # PARAMETERS
     eps = 0.01  # defines how close individuals should be to be considered a group
     dur = 3  # defines how long individuals should be together be considered a group
     num = 2  # defines how many individuals forms a group
 
-    # users = df['user'].drop_duplicates()
-    time_stamps = df['time'].drop_duplicates()
+    user_list = df['user'].drop_duplicates()
+    timestamps = df['time'].drop_duplicates()
     groups = {}
 
     # some downscaling, to be removed
-    time_stamps = time_stamps.head(30)
+    timestamps = timestamps.head(30)
     # print(users)
-    print(time_stamps)
+    print(timestamps)
     print("Done loading data\nRunning Algorithm..")
     ''' 
     FIRST LOOP COMPUTES GROUPS EACH TIMESTAMP 
     PARAMS: eps 
     '''
-    for i in range(len(time_stamps)):
-        print(f'currently on {i + 1} of {len(time_stamps)} timestamps')
+    for i in range(len(timestamps)):
+        print(f'currently on {i + 1} of {len(timestamps)} timestamps ({timestamps[i]})')
         # For a specific timestamp, check if u1 can be grouped with u2
 
         # print(time_stamps[i])
         # Dataframe filtered to current timestamp
-        dft = df.loc[df['time'] == time_stamps[i]]
+        dft = df.loc[df['time'] == timestamps[i]]
         users = dft['user']
         grpt = []
         # print(users)
@@ -162,17 +162,18 @@ elif modes[mode] == 'groups':
                                 added = True
                         if not added:
                             grpt.append({u1, u2})
-        groups[time_stamps[i]] = grpt
+        groups[timestamps[i]] = grpt
+        print()
 
-    print(groups)
+    print(f'\ngroups:\n{groups}\n')
 
     ''' 
     SECOND LOOP COMPUTES OVERALL GROUPS     
     PARAMS: dur, num 
     '''
     # TODO: finish
-    for i in range(len(time_stamps) - dur):
-        stamp = time_stamps[i]
+    for i in range(len(timestamps) - dur):
+        stamp = timestamps[i]
         grpt = groups[stamp]
         for grp in grpt:
             print(grp)
@@ -180,6 +181,6 @@ elif modes[mode] == 'groups':
             print(pset)
 
             for j in range(dur):
-                stampj = time_stamps[i + j + 1]
+                stampj = timestamps[i + j + 1]
 
 
