@@ -112,9 +112,9 @@ elif modes[mode] == 'groups':
     df = load_df_50()
 
     # PARAMETERS
-    eps = 0.01  # defines how close individuals should be to be considered a group
+    eps = 0.1  # defines how close individuals should be to be considered a group
     dur = 2  # defines how long individuals should be together be considered a group
-    num = 3  # defines how many individuals forms a group
+    num = 2  # defines how many individuals forms a group
 
     user_list = df['user'].drop_duplicates()
     timestamps = df['time'].drop_duplicates()
@@ -122,7 +122,7 @@ elif modes[mode] == 'groups':
     dur_groups = {}
 
     # some downscaling, to be removed
-    timestamps = timestamps.head(30)
+    timestamps = timestamps.head(200)
     # print(users)
     print(timestamps)
     print("Done loading data\nRunning Algorithm..")
@@ -186,13 +186,15 @@ elif modes[mode] == 'groups':
             grpt.remove(tr)
         print()
 
-    print(f'\ngroups:\n{groups}\n')
+    print(f'\ngroups')
+    for i in groups:
+        print(f'{i}, {groups[i]}')
+
 
     ''' 
     SECOND LOOP COMPUTES OVERALL GROUPS     
     PARAMS: dur, num 
     '''
-    # TODO: finish
     for i in range(len(timestamps) - dur):
         stamp = timestamps[i]
         grpt = groups[stamp]
@@ -209,7 +211,10 @@ elif modes[mode] == 'groups':
             i_list.append(new_list)
         lst = i_list[dur-1]
         dur_groups[stamp] = lst
-    print(dur_groups)
+
+    print('\ndur_groups')
+    for i in dur_groups:
+        print(f'{i}, {dur_groups[i]}')
 
 
 
