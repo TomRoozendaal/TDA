@@ -23,6 +23,8 @@ modes = {1: 'alt', 2: 'label', 3: 'time', 4: 'groups'}
 mode = 4
 
 ''' AUXILIARY FUNCTIONS '''
+
+
 # Load full data frame
 def load_df():
     try:
@@ -46,16 +48,18 @@ def load_df_50():
     return d50
 
 
-# Return powerset of a set
-def powerset(iterable):
-    "powerset([1,2,3]) --> () (1,) (2,) (3,) (1,2) (1,3) (2,3) (1,2,3)"
-    s = list(iterable)
-    lst = list(chain.from_iterable(combinations(s, r) for r in range(len(s)+1)))
-    result = []
-    for s in lst:
-        if len(s) > 0:
-            result.append(set(s))
-    return result
+# Computes distance in meters of to lon/lat points
+def compute_dist(lat1, lon1, lat2, lon2):
+    R = 6378.137
+    dLat = lat2 * m.pi / 180 - lat1 * m.pi / 180
+    dLon = lon2 * m.pi / 180 - lon1 * m.pi / 180
+    a = m.sin(dLat / 2) * m.sin(dLat / 2) + \
+        m.cos(lat1 * m.pi / 180) * m.cos(lat2 * m.pi / 180) * \
+        m.sin(dLon / 2) * m.sin(dLon / 2)
+    c = 2 * m.atan2(m.sqrt(a), m.sqrt(1 - a))
+    d = R * c
+    return d * 1000
+
 
 ''' ACTUAL IMPLEMENTATIONS '''
 if mode not in modes:
@@ -110,50 +114,50 @@ elif modes[mode] == 'time':
 elif modes[mode] == 'groups':
     '''Load/read data'''
     df = load_df_50()
+    df.sort_values(by="time", ascending=True)
 
     # PARAMETERS
-    eps = 0.1  # defines how close individuals should be to be considered a group
+    eps = 5  # defines how close individuals should be to be considered a group
     dur = 2  # defines how long individuals should be together be considered a group
     num = 2  # defines how many individuals forms a group
 
-    user_list = df['user'].drop_duplicates()
-    timestamps = df['time'].drop_duplicates()
+    user_list = df['user'].drop_duplicates().tolist()
+    timestamps = df['time'].drop_duplicates().tolist()
+    timestamps = timestamps[:3600]
+
+    # time_end, time_start = timestamps.max(), timestamps.min()
+    # timestamps = pd.date_range(start=time_start, end=time_end, freq='T')
+    # timestamps = timestamps[18000:2*18000] # some downscaling
+    print(timestamps)
+    print(timestamps[0])
     groups = {}
     dur_groups = {}
-
-    # some downscaling, to be removed
-    timestamps = timestamps.head(200)
-    # print(users)
-    print(timestamps)
     print("Done loading data\nRunning Algorithm..")
+
     ''' 
     FIRST LOOP COMPUTES GROUPS EACH TIMESTAMP 
-    PARAMS: eps 
+    PARAMS: eps, num
     '''
     for i in range(len(timestamps)):
-        print(f'currently on {i + 1} of {len(timestamps)} timestamps ({timestamps[i]})')
-        # For a specific timestamp, check if u1 can be grouped with u2
-
-        # print(time_stamps[i])
         # Dataframe filtered to current timestamp
         dft = df.loc[df['time'] == timestamps[i]]
         users = dft['user']
         grpt = []
-        # print(users)
 
+        if len(users) >= num or (i + 1) % 720 == 0:
+            print(f'currently on {i + 1} of {len(timestamps)} timestamps ({timestamps[i]})')
+
+        # Check if u1 can be grouped with u2
         for u1 in users:
             for u2 in users:
                 if u1 < u2:
                     dfu1 = dft.loc[dft['user'] == u1]
                     dfu2 = dft.loc[dft['user'] == u2]
-                    # # TODO: convert lat/long to meters (x/y)
-                    # # x1, y1 = dfu1['x'].iloc[0], dfu1['y'].iloc[0]
-                    # # x2, y2 = dfu2['x'].iloc[0], dfu2['y'].iloc[0]
-                    x1, y1 = dfu1['lat'].iloc[0], dfu1['lon'].iloc[0]
-                    x2, y2 = dfu2['lat'].iloc[0], dfu2['lon'].iloc[0]
-                    r = m.sqrt((x2 - x1)**2 + (y2 - y1)**2)
-                    print(f'u1: {u1}, (x1, y1): ({x1}, {y1})\nu2: {u2}, (x2, y2): ({x2}, {y2})')
-                    print(f'r: {r}')
+                    lat1, lon1 = dfu1['lat'].iloc[0], dfu1['lon'].iloc[0]
+                    lat2, lon2 = dfu2['lat'].iloc[0], dfu2['lon'].iloc[0]
+                    r = compute_dist(lat1, lon1, lat2, lon2)
+                    # print(f'u1: {u1}, (x1, y1): ({x1}, {y1})\nu2: {u2}, (x2, y2): ({x2}, {y2})')
+                    # print(f'r: {r}')
                     if r <= eps:
                         added = False
                         grp1 = None
@@ -175,8 +179,11 @@ elif modes[mode] == 'groups':
                             grpt.remove(grp1)
                             grpt.remove(grp2)
                             grpt.append(grp1.union(grp2))
+        if grpt:
+            print(f'\tgroups found: {grpt}')
         groups[timestamps[i]] = grpt
 
+        # Filter out groups of size < num
         to_remove = []
         for grp in grpt:
             if len(grp) < num:
@@ -184,22 +191,21 @@ elif modes[mode] == 'groups':
         for tr in to_remove:
             print(f"removed group {tr}")
             grpt.remove(tr)
-        print()
 
-    print(f'\ngroups')
+    print(f'\ngroups:')
     for i in groups:
-        print(f'{i}, {groups[i]}')
-
+        if groups[i]:
+            print(f'{i}, {groups[i]}')
 
     ''' 
-    SECOND LOOP COMPUTES OVERALL GROUPS     
+    SECOND LOOP COMPUTES PERSISTENT GROUPS
     PARAMS: dur, num 
     '''
     for i in range(len(timestamps) - dur):
         stamp = timestamps[i]
         grpt = groups[stamp]
         i_list = [grpt]
-        for j in range(dur-1):
+        for j in range(dur - 1):
             stampj = timestamps[i + j + 1]
             grps = groups[stampj]
             new_list = []
@@ -209,12 +215,24 @@ elif modes[mode] == 'groups':
                     if len(inter) >= num:
                         new_list.append(inter)
             i_list.append(new_list)
-        lst = i_list[dur-1]
+        lst = i_list[dur - 1]
         dur_groups[stamp] = lst
 
-    print('\ndur_groups')
-    for i in dur_groups:
-        print(f'{i}, {dur_groups[i]}')
+    filtered_groups = {}
+    for i in range(len(timestamps) - dur):
+        stamp1 = timestamps[i]
+        val1 = dur_groups[stamp1]
+        if i == 0:
+            filtered_groups[stamp1] = val1
+        else:
+            stamp2 = timestamps[i - 1]
+            val2 = dur_groups[stamp2]
+            if val1 != val2:
+                filtered_groups[stamp2] = val2
+                filtered_groups[stamp1] = val1
 
-
-
+    print('\nfiltered_groups:')
+    for i in filtered_groups:
+        print(f'{i}, {filtered_groups[i]}')
+        # if filtered_groups[i]:
+        #     print(f'{i}, {filtered_groups[i]}')
