@@ -1,4 +1,5 @@
 import math as m
+from datetime import datetime
 from itertools import chain, combinations
 import read_geolife
 import pandas as pd
@@ -117,13 +118,14 @@ elif modes[mode] == 'groups':
     df.sort_values(by="time", ascending=True)
 
     # PARAMETERS
-    eps = 5  # defines how close individuals should be to be considered a group
-    dur = 2  # defines how long individuals should be together be considered a group
+    eps = 10  # defines how close individuals should be to be considered a group
+    dur = 5  # defines how long individuals should be together be considered a group
     num = 2  # defines how many individuals forms a group
+    limit = dur * 6  # defines the length of the period in which the first dur timestamps must take place
 
     user_list = df['user'].drop_duplicates().tolist()
     timestamps = df['time'].drop_duplicates().tolist()
-    timestamps = timestamps[:3600]
+    timestamps = timestamps[3000:6000]
 
     # time_end, time_start = timestamps.max(), timestamps.min()
     # timestamps = pd.date_range(start=time_start, end=time_end, freq='T')
@@ -132,6 +134,8 @@ elif modes[mode] == 'groups':
     print(timestamps[0])
     groups = {}
     dur_groups = {}
+    filtered_groups = {}
+    groups_tuples = []
     print("Done loading data\nRunning Algorithm..")
 
     ''' 
@@ -144,7 +148,7 @@ elif modes[mode] == 'groups':
         users = dft['user']
         grpt = []
 
-        if len(users) >= num or (i + 1) % 720 == 0:
+        if (i + 1) % 300 == 0:
             print(f'currently on {i + 1} of {len(timestamps)} timestamps ({timestamps[i]})')
 
         # Check if u1 can be grouped with u2
@@ -179,8 +183,8 @@ elif modes[mode] == 'groups':
                             grpt.remove(grp1)
                             grpt.remove(grp2)
                             grpt.append(grp1.union(grp2))
-        if grpt:
-            print(f'\tgroups found: {grpt}')
+        # if grpt:
+        #     print(f'\tgroups found: {grpt}')
         groups[timestamps[i]] = grpt
 
         # Filter out groups of size < num
@@ -189,13 +193,13 @@ elif modes[mode] == 'groups':
             if len(grp) < num:
                 to_remove.append(grp)
         for tr in to_remove:
-            print(f"removed group {tr}")
+            # print(f"removed group {tr}")
             grpt.remove(tr)
 
-    print(f'\ngroups:')
-    for i in groups:
-        if groups[i]:
-            print(f'{i}, {groups[i]}')
+    # print(f'\ngroups:')
+    # for i in groups:
+    #     if groups[i]:
+    #         print(f'{i}, {groups[i]}')
 
     ''' 
     SECOND LOOP COMPUTES PERSISTENT GROUPS
@@ -209,16 +213,29 @@ elif modes[mode] == 'groups':
             stampj = timestamps[i + j + 1]
             grps = groups[stampj]
             new_list = []
+
+            # If stampj differs more than 2*dur minutes from stamp, disregard all groups
+            diff = stampj - stamp
+            diff_in_s = diff.total_seconds()
+            diff_minutes = divmod(diff_in_s, 60)[0]
+            if diff_minutes > limit:
+                # print(f"too long: {stampj} - {stamp} = {diff_minutes}")
+                break
+
             for grp in i_list[j]:
                 for grs in grps:
                     inter = grp.intersection(grs)
                     if len(inter) >= num:
                         new_list.append(inter)
             i_list.append(new_list)
-        lst = i_list[dur - 1]
-        dur_groups[stamp] = lst
 
-    filtered_groups = {}
+        if len(i_list) == dur:
+            lst = i_list[dur - 1]
+            dur_groups[stamp] = lst
+        else:
+            dur_groups[stamp] = []
+
+    # filter groups
     for i in range(len(timestamps) - dur):
         stamp1 = timestamps[i]
         val1 = dur_groups[stamp1]
@@ -228,11 +245,35 @@ elif modes[mode] == 'groups':
             stamp2 = timestamps[i - 1]
             val2 = dur_groups[stamp2]
             if val1 != val2:
-                filtered_groups[stamp2] = val2
+                # filtered_groups[stamp2] = val2
                 filtered_groups[stamp1] = val1
 
-    print('\nfiltered_groups:')
-    for i in filtered_groups:
-        print(f'{i}, {filtered_groups[i]}')
-        # if filtered_groups[i]:
-        #     print(f'{i}, {filtered_groups[i]}')
+    # print('\nfiltered_groups:')
+    # for i in filtered_groups:
+    #     print(f'{i}, {filtered_groups[i]}')
+    #     if filtered_groups[i]:
+    #         print(f'{i}, {filtered_groups[i]}')
+
+    # construct tuples
+    i = 0
+    while i < len(timestamps) - 1 - dur:
+        stamp1 = timestamps[i]
+        val1 = dur_groups[stamp1]
+        val2 = val1
+
+        while val1 == val2 and i < len(timestamps) - 1 - dur:
+            i += 1
+            stamp2 = timestamps[i]
+            val2 = dur_groups[stamp2]
+            # print(f'{stamp1}: {val1}', end=" ")
+            # print(f'{stamp2}: {val2}')
+
+        # i - 2 + dur
+        if val1:
+            tup = (stamp1, timestamps[i - 2 + dur], val1)
+            groups_tuples.append(tup)
+
+    print('\ngroups_tuples:')
+    for i in groups_tuples:
+        print(f'{i}')
+
