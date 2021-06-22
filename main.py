@@ -5,7 +5,7 @@ import read_geolife
 import pandas as pd
 import numpy as np
 import pptk
-import pyproj
+import pickle
 from matplotlib import cm
 
 '''
@@ -119,19 +119,19 @@ elif modes[mode] == 'groups':
 
     # PARAMETERS
     eps = 10  # defines how close individuals should be to be considered a group
-    dur = 5  # defines how long individuals should be together be considered a group
     num = 2  # defines how many individuals forms a group
+    dur = 5  # defines how long individuals should be together be considered a group
     limit = dur * 6  # defines the length of the period in which the first dur timestamps must take place
 
     user_list = df['user'].drop_duplicates().tolist()
     timestamps = df['time'].drop_duplicates().tolist()
-    timestamps = timestamps[3000:6000]
+    # timestamps = timestamps[3000:6000]
 
     # time_end, time_start = timestamps.max(), timestamps.min()
     # timestamps = pd.date_range(start=time_start, end=time_end, freq='T')
     # timestamps = timestamps[18000:2*18000] # some downscaling
-    print(timestamps)
-    print(timestamps[0])
+    # print(timestamps)
+    # print(timestamps[0])
     groups = {}
     dur_groups = {}
     filtered_groups = {}
@@ -142,59 +142,68 @@ elif modes[mode] == 'groups':
     FIRST LOOP COMPUTES GROUPS EACH TIMESTAMP 
     PARAMS: eps, num
     '''
-    for i in range(len(timestamps)):
-        # Dataframe filtered to current timestamp
-        dft = df.loc[df['time'] == timestamps[i]]
-        users = dft['user']
-        grpt = []
+    try:
+        with open('data/groups.pkl', 'rb') as f:
+            print("loading groups")
+            groups = pickle.load(f)
+    except (OSError, IOError) as e:
+        for i in range(len(timestamps)):
+            # Dataframe filtered to current timestamp
+            dft = df.loc[df['time'] == timestamps[i]]
+            users = dft['user']
+            grpt = []
 
-        if (i + 1) % 300 == 0:
-            print(f'currently on {i + 1} of {len(timestamps)} timestamps ({timestamps[i]})')
+            if (i + 1) % 300 == 0 or i == 0:
+                print(f'currently on {i + 1} of {len(timestamps)} timestamps ({timestamps[i]})')
 
-        # Check if u1 can be grouped with u2
-        for u1 in users:
-            for u2 in users:
-                if u1 < u2:
-                    dfu1 = dft.loc[dft['user'] == u1]
-                    dfu2 = dft.loc[dft['user'] == u2]
-                    lat1, lon1 = dfu1['lat'].iloc[0], dfu1['lon'].iloc[0]
-                    lat2, lon2 = dfu2['lat'].iloc[0], dfu2['lon'].iloc[0]
-                    r = compute_dist(lat1, lon1, lat2, lon2)
-                    # print(f'u1: {u1}, (x1, y1): ({x1}, {y1})\nu2: {u2}, (x2, y2): ({x2}, {y2})')
-                    # print(f'r: {r}')
-                    if r <= eps:
-                        added = False
-                        grp1 = None
-                        grp2 = None
-                        for grp in grpt:
-                            if u1 in grp:
-                                grp1 = grp
-                                added = True
-                            if u2 in grp:
-                                grp2 = grp
-                                added = True
-                        if not added:
-                            grpt.append({u1, u2})
-                        elif grp1 is None:
-                            grp2.add(u1)
-                        elif grp2 is None:
-                            grp1.add(u2)
-                        elif grp1 is not grp2:
-                            grpt.remove(grp1)
-                            grpt.remove(grp2)
-                            grpt.append(grp1.union(grp2))
-        # if grpt:
-        #     print(f'\tgroups found: {grpt}')
-        groups[timestamps[i]] = grpt
+            # Check if u1 can be grouped with u2
+            for u1 in users:
+                for u2 in users:
+                    if u1 < u2:
+                        dfu1 = dft.loc[dft['user'] == u1]
+                        dfu2 = dft.loc[dft['user'] == u2]
+                        lat1, lon1 = dfu1['lat'].iloc[0], dfu1['lon'].iloc[0]
+                        lat2, lon2 = dfu2['lat'].iloc[0], dfu2['lon'].iloc[0]
+                        r = compute_dist(lat1, lon1, lat2, lon2)
+                        # print(f'u1: {u1}, (x1, y1): ({x1}, {y1})\nu2: {u2}, (x2, y2): ({x2}, {y2})')
+                        # print(f'r: {r}')
+                        if r <= eps:
+                            added = False
+                            grp1 = None
+                            grp2 = None
+                            for grp in grpt:
+                                if u1 in grp:
+                                    grp1 = grp
+                                    added = True
+                                if u2 in grp:
+                                    grp2 = grp
+                                    added = True
+                            if not added:
+                                grpt.append({u1, u2})
+                            elif grp1 is None:
+                                grp2.add(u1)
+                            elif grp2 is None:
+                                grp1.add(u2)
+                            elif grp1 is not grp2:
+                                grpt.remove(grp1)
+                                grpt.remove(grp2)
+                                grpt.append(grp1.union(grp2))
+            # if grpt:
+            #     print(f'\tgroups found: {grpt}')
+            groups[timestamps[i]] = grpt
 
-        # Filter out groups of size < num
-        to_remove = []
-        for grp in grpt:
-            if len(grp) < num:
-                to_remove.append(grp)
-        for tr in to_remove:
-            # print(f"removed group {tr}")
-            grpt.remove(tr)
+            # Filter out groups of size < num
+            to_remove = []
+            for grp in grpt:
+                if len(grp) < num:
+                    to_remove.append(grp)
+            for tr in to_remove:
+                # print(f"removed group {tr}")
+                grpt.remove(tr)
+
+        with open('data/groups.pkl', 'wb') as f:
+            print("saving groups")
+            pickle.dump(groups, f)
 
     # print(f'\ngroups:')
     # for i in groups:
