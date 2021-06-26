@@ -294,5 +294,10 @@ elif modes[mode] == 'locations':
 
     dft = df.loc[df['time'] == timestamp]
     dft = dft.drop(['alt', 'label'], axis=1)
-    print(dft)
+    # print(dft)
+
+    # if you would like to show specific users
+    users = [0, 3, 4, 30]
+    dfu = dft.loc[dft['user'].isin(users)]
+    print(dfu)
 
