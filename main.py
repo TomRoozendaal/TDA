@@ -20,8 +20,8 @@ cols = cm.get_cmap('plasma', 48).colors
 colormap = np.concatenate((cols, cols[::-1]))
 
 # select a visualization
-modes = {1: 'alt', 2: 'label', 3: 'time', 4: 'groups'}
-mode = 4
+modes = {1: 'alt', 2: 'label', 3: 'time', 4: 'groups', 5:'locations'}
+mode = 5
 
 ''' AUXILIARY FUNCTIONS '''
 
@@ -285,4 +285,14 @@ elif modes[mode] == 'groups':
     print('\ngroups_tuples:')
     for i in groups_tuples:
         print(f'{i}')
+elif modes[mode] == 'locations':
+    '''Load/read data'''
+    df = load_df_50()
+
+    # example: 2009-04-14 05:57:00
+    timestamp = pd.Timestamp("2009-04-14 05:57:00")
+
+    dft = df.loc[df['time'] == timestamp]
+    dft = dft.drop(['alt', 'label'], axis=1)
+    print(dft)
 
