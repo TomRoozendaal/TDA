@@ -20,7 +20,7 @@ cols = cm.get_cmap('plasma', 48).colors
 colormap = np.concatenate((cols, cols[::-1]))
 
 # select a visualization
-modes = {1: 'alt', 2: 'label', 3: 'time', 4: 'groups', 5:'locations'}
+modes = {1: 'alt', 2: 'label', 3: 'time', 4: 'groups', 5: 'locations'}
 mode = 5
 
 ''' AUXILIARY FUNCTIONS '''
@@ -115,7 +115,7 @@ elif modes[mode] == 'time':
 elif modes[mode] == 'groups':
     '''Load/read data'''
     df = load_df_50()
-    df.sort_values(by="time", ascending=True)
+    df = df.sort_values(by="time", ascending=True)
 
     # PARAMETERS
     eps = 10  # defines how close individuals should be to be considered a group
@@ -129,7 +129,7 @@ elif modes[mode] == 'groups':
 
     # time_end, time_start = timestamps.max(), timestamps.min()
     # timestamps = pd.date_range(start=time_start, end=time_end, freq='T')
-    # timestamps = timestamps[18000:2*18000] # some downscaling
+    # timestamps = timestamps[3000:6000]  # some downscaling
     # print(timestamps)
     # print(timestamps[0])
     groups = {}
@@ -282,22 +282,36 @@ elif modes[mode] == 'groups':
             tup = (stamp1, timestamps[i - 2 + dur], val1)
             groups_tuples.append(tup)
 
+    groups_tuples = sorted(groups_tuples, key=lambda x: x[0])
     print('\ngroups_tuples:')
     for i in groups_tuples:
-        print(f'{i}')
+        print(f'{i[0]} & {i[1]} & $', end="")
+        for k in range(len(i[2])):
+            s = i[2][k]
+            print('\{', end="")
+            for j, val in enumerate(s):
+                print(f'{val}', end='')
+                if j != len(s) - 1:
+                    print(', ', end='')
+            print('\}', end="")
+            if k != len(i[2]) - 1:
+                print(', ', end='')
+        print('$\\\\\\hline')
+
 elif modes[mode] == 'locations':
     '''Load/read data'''
     df = load_df_50()
+    df = df.drop(['alt', 'label'], axis=1)
 
     # example: 2009-04-14 05:57:00
-    timestamp = pd.Timestamp("2009-04-14 05:57:00")
+    timestamps = [pd.Timestamp("2007-08-10 11:06:00"),
+                  pd.Timestamp("2007-07-31 12:38:00 ")]
 
-    dft = df.loc[df['time'] == timestamp]
-    dft = dft.drop(['alt', 'label'], axis=1)
+    dft = df.loc[df['time'].isin(timestamps)]
     # print(dft)
 
     # if you would like to show specific users
-    users = [0, 3, 4, 30]
+    users = [57, 150, 94]
     dfu = dft.loc[dft['user'].isin(users)]
+    dfu = dfu.sort_values(by="time", ascending=True)
     print(dfu)
-
