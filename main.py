@@ -21,7 +21,7 @@ colormap = np.concatenate((cols, cols[::-1]))
 
 # select a visualization
 modes = {1: 'alt', 2: 'label', 3: 'time', 4: 'groups', 5: 'locations'}
-mode = 5
+mode = 4
 
 ''' AUXILIARY FUNCTIONS '''
 
@@ -298,20 +298,30 @@ elif modes[mode] == 'groups':
                 print(', ', end='')
         print('$\\\\\\hline')
 
+    # countthrees = 0
+    # for i in groups_tuples:
+    #     for k in i[2]:
+    #         print(k)
+    #         if len(k) == 3:
+    #             countthrees += 1
+    # print()
+    # print(countthrees)
+
 elif modes[mode] == 'locations':
     '''Load/read data'''
     df = load_df_50()
     df = df.drop(['alt', 'label'], axis=1)
 
     # example: 2009-04-14 05:57:00
-    timestamps = [pd.Timestamp("2007-08-10 11:06:00"),
-                  pd.Timestamp("2007-07-31 12:38:00 ")]
+    timestamps = [pd.Timestamp("2009-03-30 00:52:00"),
+                  pd.Timestamp("2009-07-05 07:45:00")]
 
     dft = df.loc[df['time'].isin(timestamps)]
     # print(dft)
 
     # if you would like to show specific users
-    users = [57, 150, 94]
+    users = [0, 3, 30, 4]
+
     dfu = dft.loc[dft['user'].isin(users)]
     dfu = dfu.sort_values(by="time", ascending=True)
     print(dfu)
